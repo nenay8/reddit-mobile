@@ -211,7 +211,7 @@ function routes(app) {
       manifest: app.getConfig('manifest'),
       assetPath: app.getConfig('assetPath'),
       loginPath: app.getConfig('loginPath'),
-      adsPath: app.getConfig('adsPath'),
+      adsSlot: app.getConfig('adsSlot'),
       origin: app.getConfig('origin'),
       propertyId: app.getConfig('googleAnalyticsId'),
       showBetaBanner: ctx.showBetaBanner,

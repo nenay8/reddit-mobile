@@ -157,7 +157,7 @@ class IndexPage extends React.Component {
         />);
     }
 
-    var showAds = !!props.adsPath;
+    var showAds = !!props.adsSlot;
 
     if (props.prefs && props.prefs.hide_ads === true) {
       showAds = false;
@@ -181,7 +181,7 @@ class IndexPage extends React.Component {
         <div className={'container Listing-container' + (compact ? ' compact' : '')} ref='listings'>
           <ListingList
             showAds={ showAds }
-            adsPath={ props.adsPath }
+            adsSlot={ props.adsSlot }
             listings={listings}
             firstPage={page}
             https={ props.https }

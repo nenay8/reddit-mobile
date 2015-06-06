@@ -24,7 +24,7 @@ var config = {
 
   loginPath: process.env.LOGIN_PATH || '/oauth2/login',
 
-  adsPath: process.env.ADS_PATH ||  'https://www.reddit.com/api/request_promo.json',
+  adsSlot: process.env.ADS_PATH || '/32173961/mw_card_test_1',
 };
 
 export default config;

@@ -4,20 +4,92 @@ import superagent from 'superagent';
 import { models } from 'snoode';
 
 import constants from '../../constants';
+import frames from '../../lib/frames';
 
 import Listing from './Listing';
+
+
+const TIMEOUT = 10 * 1000;
 
 class Ad extends React.Component {
   constructor (props) {
     super(props);
 
+    this.id = _.uniqueId('dfp-sponsored-headline-');
     this.state = {
       loaded: false,
       unavailable: false,
     };
 
     this._scroll = _.throttle(this._scroll.bind(this), 100);
-    this._removeListeners = this._removeListeners.bind(this);
+  }
+
+  getCreative () {
+    var adId = this.id;
+    var props = this.props;
+
+    frames.listen('dfp');
+
+    return new Promise(function(resolve, reject) {
+      frames.receiveMessageOnce('init.dfp', function(e) {
+        frames.stopListening('dfp');
+        resolve(e.detail);
+      });
+
+      googletag.cmd.push(function() {
+        googletag
+          .defineOutOfPageSlot(props.app.config.adsSlot, adId)
+          .addService(googletag.pubads())
+          .setTargeting('subreddit', props.srnames);
+
+        googletag.pubads().enableSingleRequest();
+        googletag.enableServices();
+      });
+
+      googletag.cmd.push(function() {
+        googletag.display(adId);
+      });
+
+      setTimeout(() => {
+        reject('timeout');
+      }, TIMEOUT);
+    });
+  }
+
+  getLink (id) {
+    var props = this.props;
+    var url = (props.token ?
+      props.app.config.authAPIOrigin : props.app.config.nonAuthAPIOrigin) +
+        '/api/dfp/link.json';
+    var headers = {};
+
+    if (props.token) {
+      headers.authorization = 'bearer ' + props.token;
+    };
+
+    return new Promise((resolve, reject) => {
+      superagent
+        .post(url)
+        .set(headers)
+        .type('form')
+        .send({
+          dfp_creative_id: id,
+        })
+        .end(function(err, res) {
+          if (err || !res.ok) {
+            reject(err);
+            return;
+          }
+
+          // Ad is missing attributes
+          if (res.body.json && res.body.json.errors) {
+            reject(res.body.json);
+            return;
+          }
+
+          resolve(res.body.data);
+        });
+    });
   }
 
   checkPos () {
@@ -48,67 +120,45 @@ class Ad extends React.Component {
     listing.resize.apply(listing, arguments);
   }
 
-  getAd () {
-    var srnames = this.props.srnames;
-
-    // If we're not on a sub/multi, we're on the front page, so get front page
-    // ads
-    if (!this.props.subredditTitle) {
-      srnames = ' reddit.com';
-    }
-
-    return new Promise((resolve, reject) => {
-      superagent.post(this.props.adsPath)
-        .type('form')
-        .send({
-          srnames: srnames,
-          is_mobile_web: true,
-        })
-        .end(function(err, res) {
-          if (err) {
-            return reject(err);
-          }
-
-          if (res && res.status === 200 && res.body) {
-            var link = res.body.data;
-            link.url = link.href_url.replace(/&amp;/g, '&');
-
-            link.imp_pixel = link.imp_pixel.replace(/&amp;/g, '&');
-            link.adserver_imp_pixel = link.adserver_imp_pixel.replace(/&amp;/g, '&');
-            return resolve(new models.Link(link).toJSON());
-          } else {
-            return reject(res);
-          }
-        });
-      });
-  }
-
   componentDidMount () {
-    this.getAd().then((ad) => {
-      return this.setState({
-        loaded: true,
-        ad: new models.Link(ad).toJSON(),
+    this.getCreative().then(creative => {
+      this.getLink(creative.dfp_creative_id).then(link => {
+        var url = link.url;
+
+        link.url = creative.dfp_click_tracker + encodeURIComponent(link.href_url.replace(/&amp;/g, '&'));
+
+        return this.setState({
+          loaded: true,
+          ad: new models.Link(link).toJSON(),
+          impressionTrackers: _.compact([
+            link.imp_pixel,
+            link.adserver_imp_pixel,
+            link.third_party_tracker,
+            link.third_party_tracker_2,
+            creative.dfp_impression_tracker + encodeURIComponent(url),
+          ]),
+        });
       });
     }, () => {
       this.setState({
         unavailable: true,
       });
     });
-
-    this.props.app.on(constants.SCROLL, this._scroll);
-    this.props.app.on(constants.RESIZE, this._scroll);
-
-    this._hasListeners = true;
-    this._scroll();
   }
 
   componentDidUpdate (prevProps, prevState) {
     if (!prevState.loaded && this.state.loaded) {
       this.props.afterLoad();
+      this.props.app.on(constants.SCROLL, this._scroll);
+      this.props.app.on(constants.RESIZE, this._scroll);
+
+      this._hasListeners = true;
+      this._scroll();
     }
   }
 
   componentWillUnmount() {
+    frames.stopListening();
     this._removeListeners();
   }
 
@@ -121,8 +171,13 @@ class Ad extends React.Component {
   }
 
   _scroll() {
-    var adObject = this.state.ad;
-    if (adObject) {
+    if (this.state.loaded || this.state.unavailable) {
+      var trackers = this.state.impressionTrackers;
+
+      if (!trackers.length) {
+        return this._removeListeners();
+      }
+
       var node = React.findDOMNode(this);
       var winHeight = window.innerHeight;
       var rect = node.getBoundingClientRect();
@@ -132,20 +187,25 @@ class Ad extends React.Component {
       var middle = (top + bottom) / 2;
       var middleIsAboveBottom = middle < winHeight;
       var middleIsBelowTop = bottom > constants.TOP_NAV_HEIGHT + height / 2;
-      if(middleIsAboveBottom && middleIsBelowTop) {
-        var srcs=['imp_pixel', 'adserver_imp_pixel'];
-        for (var i = 0, iLen = srcs.length; i < iLen; i++) {
+
+      if (middleIsAboveBottom && middleIsBelowTop) {
+        for (var i = 0; i < trackers.length; i++) {
           var pixel = new Image();
-          pixel.src = adObject[srcs[i]];
+          pixel.src = trackers[i];
         }
+
         this._removeListeners();
       }
     }
   }
 
   render () {
-    if (!this.state.loaded || this.state.unavailable) {
+    if (this.state.unavailable) {
       return null;
+    }
+
+    if (!this.state.loaded) {
+      return (<div id={ this.id }></div>);
     }
 
     var props = this.props;
@@ -166,6 +226,7 @@ class Ad extends React.Component {
 Ad.propTypes = {
   afterLoad: React.PropTypes.func.isRequired,
   compact: React.PropTypes.bool.isRequired,
+  srnames: React.PropTypes.array.isRequired,
 };
 
 export default Ad;
