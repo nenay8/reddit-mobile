@@ -41,7 +41,7 @@ function receiveMessage(e) {
 
 
 function compileOriginRegExp(origins) {
-  return new RegExp('^http(s)?:\\/\\/' + origins.join('|'), 'i');
+  return new RegExp('^http(s)?:\\/\\/' + origins.join('|') + '$', 'i');
 }
 
 function compileNamespaceRegExp(namespaces) {
