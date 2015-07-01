@@ -51,7 +51,7 @@ class Ad extends React.Component {
       });
 
       setTimeout(() => {
-        reject('timeout');
+        reject('dfp ad creative timeout');
       }, TIMEOUT);
     });
   }
