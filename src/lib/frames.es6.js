@@ -1,11 +1,9 @@
 'use strict';
 
-var WILDCARD = '*';
-var ALLOW_WILDCARD = '.*';
-var RE_WILDCARD = /\*/;
-var DEFAULT_MESSAGE_NAMESPACE = '.postMessage';
-var DEFAULT_POSTMESSAGE_OPTIONS = {
-  targetOrigin: WILDCARD,
+const ALLOW_WILDCARD = '.*';
+const DEFAULT_MESSAGE_NAMESPACE = '.postMessage';
+const DEFAULT_POSTMESSAGE_OPTIONS = {
+  targetOrigin: '*',
 };
 
 var allowedOrigins = [ALLOW_WILDCARD];
@@ -49,7 +47,7 @@ function compileNamespaceRegExp(namespaces) {
 }
 
 function isWildcard(origin) {
-  return RE_WILDCARD.test(origin);
+  return /\*/.test(origin);
 }
 
 
