@@ -24,7 +24,7 @@ var config = {
 
   loginPath: process.env.LOGIN_PATH || '/oauth2/login',
 
-  adsSlot: process.env.ADS_PATH || '/32173961/mw_card_test_1',
+  adsSlot: process.env.ADS_SLOT || '/32173961/mw_card_test_1',
 };
 
 export default config;
