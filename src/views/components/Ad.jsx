@@ -74,6 +74,7 @@ class Ad extends React.Component {
         .type('form')
         .send({
           dfp_creative_id: id,
+          raw_json: 1,
         })
         .end(function(err, res) {
           if (err || !res.ok) {
@@ -125,7 +126,7 @@ class Ad extends React.Component {
       this.getLink(creative.dfp_creative_id).then(link => {
         var url = link.url;
 
-        link.url = creative.dfp_click_tracker + encodeURIComponent(link.href_url.replace(/&amp;/g, '&'));
+        link.url = creative.dfp_click_tracker + encodeURIComponent(link.href_url);
 
         return this.setState({
           loaded: true,
