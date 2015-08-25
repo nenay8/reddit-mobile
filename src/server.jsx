@@ -26,9 +26,10 @@ import serverRoutes from './serverRoutes';
 import routes from './routes';
 
 import randomBySeed from './lib/randomBySeed'
+import setLoggedOutCookies from './lib/loid';
 
 function getBucket(loid, choices, controlSize) {
-  return (loid ? parseInt(loid.substring(loid.length - 4), 36) : Math.floor(Math.random() * 100)) % 100;
+  return parseInt(loid.substring(loid.length - 4), 36) % 100;
 }
 
 function formatProps (props = {}) {
@@ -133,6 +134,7 @@ class Server {
 
     server.use(this.checkToken(app));
     server.use(this.convertSession(app));
+    server.use(this.setLOID(app));
     server.use(this.setExperiments(app));
     server.use(this.modifyRequest(app));
     server.use(this.setHeaders(app));
@@ -158,6 +160,21 @@ class Server {
     }
   }
 
+  setLOID (app) {
+    return function * (next) {
+      if (!this.cookies.get('loid')) {
+        let cookies = setLoggedOutCookies(this.cookies, app);
+
+        // koa doesn't return cookies set null within the
+        // same request, cache it for later
+        this._loid = cookies.loid;
+      }
+
+      yield next;
+      return;
+    };
+  }
+
   setExperiments (app) {
     return function * (next) {
       if (!app.config.experiments) {
@@ -178,6 +195,8 @@ class Server {
           }
         }
       } else {
+        loid = this._loid;
+
         this.newUser = true;
       }
 

@@ -17,8 +17,8 @@ import cookies from 'cookies-js';
 import getTimes from '../../src/lib/timing';
 import globals from '../../src/globals';
 import randomBySeed from '../../src/lib/randomBySeed';
-import randomString from '../../src/lib/randomString';
 import routes from '../../src/routes';
+import setLoggedOutCookies from './lib/loid';
 import Utils from '../../src/lib/danehansen/utils/Utils';
 
 import trackingEvents from './trackingEvents';
@@ -203,18 +203,7 @@ function initialize(bindLinks) {
       refreshToken(app);
     }, refreshMS);
   } else if (!cookies.get('loid')) {
-    let loggedOutId = randomString(18);
-    let created = (new Date()).toISOString();
-
-    var cookieOptions = {
-      secure: app.getConfig('https'),
-      secureProxy: app.getConfig('httpsProxy'),
-      httpOnly: false,
-      maxAge: 1000 * 60 * 60 * 24 * 365 * 2,
-    };
-
-    cookies.set('loid', loggedOutId, cookieOptions);
-    cookies.set('loidcreated', created, cookieOptions);
+    setLoggedOutCookies(cookies, app);
   }
 
   app.router.get('/oauth2/login', function * () {
