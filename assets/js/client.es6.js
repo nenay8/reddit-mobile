@@ -18,7 +18,7 @@ import getTimes from '../../src/lib/timing';
 import globals from '../../src/globals';
 import randomBySeed from '../../src/lib/randomBySeed';
 import routes from '../../src/routes';
-import setLoggedOutCookies from './lib/loid';
+import setLoggedOutCookies from '../../src/lib/loid';
 import Utils from '../../src/lib/danehansen/utils/Utils';
 
 import trackingEvents from './trackingEvents';
