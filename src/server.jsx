@@ -165,7 +165,7 @@ class Server {
       if (!this.cookies.get('loid')) {
         let cookies = setLoggedOutCookies(this.cookies, app);
 
-        // koa doesn't return cookies set null within the
+        // koa doesn't return cookies set within the
         // same request, cache it for later
         this._loid = cookies.loid;
       }
