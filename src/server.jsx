@@ -27,19 +27,8 @@ import routes from './routes';
 
 import randomBySeed from './lib/randomBySeed'
 
-function randomString(len) {
-  var id = [];
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (var i = 0; i < len; i++) {
-    id.push(chars.charAt(Math.floor(Math.random() * chars.length)));
-  }
-
-  return id.join('');
-}
-
 function getBucket(loid, choices, controlSize) {
-  return parseInt(loid.substring(loid.length - 4), 36) % 100;
+  return (loid ? parseInt(loid.substring(loid.length - 4), 36) : Math.floor(Math.random() * 100)) % 100;
 }
 
 function formatProps (props = {}) {
@@ -144,7 +133,6 @@ class Server {
 
     server.use(this.checkToken(app));
     server.use(this.convertSession(app));
-    server.use(this.setLOID(app));
     server.use(this.setExperiments(app));
     server.use(this.modifyRequest(app));
     server.use(this.setHeaders(app));
@@ -170,47 +158,6 @@ class Server {
     }
   }
 
-  setLOID (app) {
-    return function * (next) {
-      if (this.cookies.get('loid')) {
-        this.loid = this.cookies.get('loid');
-        this.loidcreated = this.cookies.get('loidcreated');
-
-        // If user came from desktop, and is a new user, treat them as new for
-        // experiments.
-        if (this.query.ref_source === 'desktop') {
-          let created = new Date(this.loidcreated);
-
-          if (created.setMinutes(created.getMinutes() - 5) < Date.now()) {
-            this.newUser = true;
-          }
-        }
-
-        yield next;
-        return;
-      }
-
-      let loggedOutId = randomString(18);
-      let created = (new Date()).toISOString();
-
-      var cookieOptions = {
-        secure: app.getConfig('https'),
-        secureProxy: app.getConfig('httpsProxy'),
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24 * 365 * 2,
-      }
-
-      this.loid = loggedOutId;
-      this.loidcreated = created;
-
-      this.newUser = true;
-      this.cookies.set('loid', loggedOutId, cookieOptions);
-      this.cookies.set('loidcreated', created, cookieOptions);
-
-      yield next;
-    }
-  }
-
   setExperiments (app) {
     return function * (next) {
       if (!app.config.experiments) {
@@ -218,7 +165,23 @@ class Server {
         return;
       }
 
-      let bucket = getBucket(this.loid);
+      let loid = this.cookies.get('loid');
+
+      if (loid) {
+        // If user came from desktop, and is a new user, treat them as new for
+        // experiments.
+        if (this.query.ref_source === 'desktop') {
+          let created = new Date(this.cookies.get('loidcreated'));
+
+          if (created.setMinutes(created.getMinutes() - 5) < Date.now()) {
+            this.newUser = true;
+          }
+        }
+      } else {
+        this.newUser = true;
+      }
+
+      let bucket = getBucket(loid);
       this.experiments = [];
 
       if (app.config.experiments.fiftyfifty &&
@@ -298,11 +261,6 @@ class Server {
       if (!this.token) {
         this.token = this.cookies.get('token');
         this.tokenExpires = this.cookies.get('tokenExpires');
-
-        if (!this.loid) {
-          this.loid = this.cookies.get('loid');
-          this.loidcreated = this.cookies.get('loidcreated');
-        }
       }
 
       this.renderSynchronous = true;
