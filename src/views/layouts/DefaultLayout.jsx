@@ -76,7 +76,7 @@ function DefaultLayout  (props) {
           frame.referrer = 'no-referrer';
           frame.id = 'gtm-jail';
           frame.name = JSON.stringify({
-            subreddit: ${subredditName || ''},
+            subreddit: '${subredditName || ''}',
             origin: location.origin,
           });
           frame.src = '//${config.mediaDomain}/gtm/jail?id=${config.googleTagManagerId}';
