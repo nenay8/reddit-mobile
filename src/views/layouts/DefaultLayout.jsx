@@ -64,7 +64,7 @@ function DefaultLayout  (props) {
   }
 
   let gtmTracking;
-  const subredditName = props.ctx.param.subreddit;
+  const subredditName = props.ctx.params.subreddit;
 
   if (config.googleTagManagerId && config.mediaDomain) {
     const gtmCode = `
