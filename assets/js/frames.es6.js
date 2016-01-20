@@ -1,10 +1,9 @@
-'use strict';
-
 const ALLOW_WILDCARD = '.*';
 const DEFAULT_MESSAGE_NAMESPACE = '.postMessage';
 const DEFAULT_POSTMESSAGE_OPTIONS = {
   targetOrigin: '*',
 };
+const RE_HAS_NAMESPACE = /\..+$/;
 
 let allowedOrigins = [ALLOW_WILDCARD];
 let re_postMessageAllowedOrigin = compileOriginRegExp(allowedOrigins);
@@ -32,14 +31,14 @@ function receiveMessage(e) {
     let namespace = type.split('.', 2)[1];
 
     if (proxies[namespace]) {
-      let proxyWith = proxies[namespace];
+      const proxyWith = proxies[namespace];
 
-      for (let i = 0; i < proxyWith.targets.length; i++) {
-        frames.postMessage(proxyWith.targets[i], type, message.data, message.options);
-      }
+      proxyWith.targets.forEach(function(target) {
+        frames.postMessage(target, type, message.data, message.options);
+      });
     }
 
-    let customEvent = new CustomEvent(type, {detail: message.data});
+    const customEvent = new CustomEvent(type, {detail: message.data});
     customEvent.source = e.source;
 
     global.dispatchEvent(customEvent);
@@ -47,18 +46,18 @@ function receiveMessage(e) {
 }
 
 function _addEventListener(type, handler, useCapture) {
-  if ('addEventListener' in global) {
+  if (global.addEventListener) {
     global.addEventListener(type, handler, useCapture);
-  } else if ('attachEvent' in global) {
-    global.attachEvent('on' + type, handler);
+  } else if (global.attachEvent) {
+    global.attachEvent(`on${type}`, handler);
   }
 }
 
 function _removeEventListener(type, handler, useCapture) {
-  if ('removeEventListener' in global) {
+  if (global.removeEventListener) {
     global.removeEventListener(type, handler);
-  } else if ('detachEvent' in global) {
-    global.attachEvent('on' + type, handler);
+  } else if (global.detachEvent) {
+    global.attachEvent(`on${type}`, handler);
   }
 }
 
@@ -85,17 +84,19 @@ function isWildcard(origin) {
  * // iframe
  * // frames.postMessage(window.parent, 'init.dfp', data);
  */
-let frames = {
+const frames = {
   /*
    * Send a message to another window.
    * param {Window} target The frame to deliver the message to.
-   * param {String} type The message type. (if it doesn't include a namespace the default namespace will be used)
+   * param {String} type The message type. (if it doesn't include a namespace
+      the default namespace will be used)
    * param {Object} data The data to send.
    * param {Object} options The `postMessage` options.
-   * param {String} options.targetOrigin Specifies what the origin of otherWindow must be for the event to be dispatched.
+   * param {String} options.targetOrigin Specifies what the origin of
+      otherWindow must be for the event to be dispatched.
    */
   postMessage: function (target, type, data, options) {
-    if (!/\..+$/.test(type)) {
+    if (!RE_HAS_NAMESPACE.test(type)) {
       type += DEFAULT_MESSAGE_NAMESPACE;
     }
 
@@ -106,13 +107,18 @@ let frames = {
       }
     }
 
-    target.postMessage(JSON.stringify({type: type, data: data, options: options}), options.targetOrigin);
+    target.postMessage(JSON.stringify({
+      type: type,
+      data: data,
+      options: options,
+    }), options.targetOrigin);
   },
 
   /*
    * Receive a message from another window.
    * param {Window} [source] The frame to that send the message.
-   * param {String} type The message type. (if it doesn't include a namespace the default namespace will be used)
+   * param {String} type The message type. (if it doesn't include a namespace
+      the default namespace will be used)
    * param {Function} callback The callback to invoke upon retrieval.
    * param {Object} [context=this] The context the callback is invoked with.
    * returns {Object} The listener.
@@ -154,7 +160,7 @@ let frames = {
   proxy: function(namespace, targets) {
     this.listen(namespace);
 
-    if (Object.prototype.toString.call(targets) !== '[object Array]') {
+    if (!Array.isArray(targets)) {
       targets = [targets];
     }
 
@@ -174,19 +180,18 @@ let frames = {
   /*
    * Receive a message from another window once.
    * param {Window} [source] The frame to that send the message.
-   * param {String} type The message type. (if it doesn't include a namespace the default namespace will be used)
+   * param {String} type The message type. (if it doesn't include a namespace
+      the default namespace will be used)
    * param {Function} callback The callback to invoke upon retrieval.
    * param {Object} [context=this] The context the callback is invoked with.
    * returns {Object} The listener.
    */
   receiveMessageOnce: function (source, type, callback, context) {
-    let listener = frames.receiveMessage(source, type, function() {
+    return frames.receiveMessage(source, type, function() {
       callback && callback.apply(this, arguments);
 
       listener.off();
     }, context);
-
-    return listener;
   },
 
   /*
