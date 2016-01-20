@@ -61,7 +61,6 @@ function _removeEventListener(type, handler, useCapture) {
   }
 }
 
-
 function compileOriginRegExp(origins) {
   return new RegExp('^http(s)?:\\/\\/' + origins.join('|') + '$', 'i');
 }
@@ -73,7 +72,6 @@ function compileNamespaceRegExp(namespaces) {
 function isWildcard(origin) {
   return /\*/.test(origin);
 }
-
 
 /** @module frames */
 /* @example
@@ -149,7 +147,6 @@ const frames = {
       off: function() { _removeEventListener(type, scoped); }
     };
   },
-
 
   /*
    * Proxies messages on a namespace from a frame to a specified target.

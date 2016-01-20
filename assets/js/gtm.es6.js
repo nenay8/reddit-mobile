@@ -22,5 +22,4 @@ let gtm = {
 
 };
 
-
 export default gtm;
