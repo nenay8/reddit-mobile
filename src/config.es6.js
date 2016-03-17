@@ -50,6 +50,9 @@ function config() {
     googleAnalyticsId: process.env.GOOGLE_ANALYTICS_ID,
     googleTagManagerId: process.env.GOOGLE_TAG_MANAGER_ID,
 
+    facebookAudienceAppId: process.env.FACEBOOK_AUDIENCE_APP_ID,
+    facebookAudiencePlacementId: process.env.FACEBOOK_AUDIENCE_PLACEMENT_ID,
+
     localStorageAvailable: localStorageAvailable(),
 
     loginPath,
