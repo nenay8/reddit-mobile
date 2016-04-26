@@ -7,6 +7,9 @@ import Listing from './Listing';
 import Post from './listings/Post';
 
 import makeRequest from '../../lib/makeRequest';
+import {
+  aspectRatioClass,
+} from './listings/mediaUtils';
 
 const T = React.PropTypes;
 
@@ -112,6 +115,7 @@ class Ad extends BaseComponent {
 
   componentDidMount() {
     this.getAd().then((ad) => {
+      throw new Exception('test')
       return this.setState({
         loaded: true,
         ad: new models.Link(ad).toJSON(),
@@ -187,7 +191,14 @@ class Ad extends BaseComponent {
         'ad.loaded',
         function(placementId) {
           console.log('Audience Network ad loaded');
-          document.getElementById('ad_root').style.display = 'block';
+          var root = document.getElementById('ad_root');
+          var media = root.getElementsByClassName('thirdPartyMediaClass')[0];
+
+          if (media && media.childNodes[0].tagName === 'IMG') {
+            media.style.height = 'auto';
+          }
+
+          root.style.display = 'block';
         }
       );
       FB.Event.subscribe(
@@ -210,20 +221,98 @@ class Ad extends BaseComponent {
     const facebookAudiencePlacementId = this.props.config.facebookAudiencePlacementId;
 
     const adCode = `
+      <style>
+         #ad_root {
+            display: none;
+            position: relative;
+            width: 100%;
+            background: #fff;
+          }
+
+          .thirdPartyLinkClass:hover {
+            text-decoration: none;
+          }
+
+          .thirdPartyMediaClass {
+            height: 157px;
+          }
+
+          .thirdPartyMediaClass img {
+            height: auto !important;
+            width: 100% !important;
+            object-fit: contain !important;
+          }
+
+          .thirdPartyTitleClass {
+            font-weight: 600;
+            font-size: 16px;
+            margin: 8px 0 4px 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .thirdPartyBodyClass {
+            display: -webkit-box;
+            height: 32px;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+          }
+
+          .thirdPartyCallToActionClass {
+            color: #326891;
+            font-family: sans-serif;
+            font-weight: 600;
+          }
+        </style>
       <fb:ad
         placementid="${facebookAudiencePlacementId}"
         format="native"
         nativeadid="ad_root"
         testmode="true">
       </fb:ad>
-      <div id="ad_root">
-        <a class="fbAdLink">
-          <div class="fbAdMedia thirdPartyMediaClass"></div>
-          <div class="fbAdTitle thirdPartyTitleClass"></div>
-          <div class="fbAdBody thirdPartyBodyClass"></div>
-          <div class="fbAdCallToAction thirdPartyCallToActionClass"></div>
+      <article id="ad_root" class="Post size-default">
+        <a class="fbAdLink thirdPartyLinkClass">
+          <div class="Post__header-wrapper">
+            <header class="PostHeader">
+              <div class="PostHeader__post-descriptor-line">
+                <div class="PostHeader__post-descriptor-line-overflow">
+                  <span class="PostHeader__sponsored-flair">SPONSORED</span>
+                </div>
+              </div>
+              <div class="PostHeader__post-title-line fbAdTitle"></div>
+            </header>
+          </div>
+          <div class="PostContent size-default">
+            <div class="PostContent__media-wrapper">
+              <div class="fbAdMedia thirdPartyMediaClass"></div>
+              <div class="PostContent__link-bar">
+                <div class="PostContent__link-bar-text fbAdCallToAction"></div>
+                <span class="PostContent__link-bar-icon icon-linkout blue"></span>
+              </div>
+            </div>
+          </div>
+          <div class="PostFooter">
+            <!--
+            <div class="PostFooter__vote-and-tools-wrapper">
+              <div class="PostFooter__dropdown-button PostFooter__hit-area icon-seashells"></div>
+              <span class="PostFooter__vertical-divider"></span>
+              <div class="PostFooter__hit-area">
+                <span class="PostFooter__vote-text">
+                  ●
+                </span>
+                <span class="PostFooter__vote-arrow-wrapper">
+                  <span class="icon-upvote blue"></span>
+                </span>
+                <span class="PostFooter__vote-arrow-wrapper">
+                  <span class="icon-downvote blue"></span>
+                </span>
+              </div>
+            </div>
+            -->
+          </div>
         </a>
-      </div>
+      </article>
     `;
     
     return (
